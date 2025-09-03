@@ -1,83 +1,251 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Agri Chatbot</title>
+    <title>Agri AI Assistant</title>
     <link rel="icon" type="image/x-icon" href="static/images/favicon.ico">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="This is an Agriculture chatbot that helps farmers to make write desitions." />
-    <link rel="icon" type="image/png" href="static/images/favicon.ico"/>
+    <link rel="icon" type="image/png" href="static/images/assistant"/>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
-    <!-- Option 1: Include in HTML -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.3.0/font/bootstrap-icons.css">
     <style>
-        .loading-message {
-            text-align: center;
-            font-style: italic;
-            color: #999;
+        /* Layout */
+        html, body {
+            height: 100%;
+            margin: 0;
+            background: #f7f7f8;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial;
         }
-
-        #chat-container {
-            height: 60vh;
+        .app {
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .sidebar {
+            width: 260px;
+            background: #0b1320;
+            color: #fff;
+            padding: 20px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .sidebar.hidden { display: none; }
+        .sidebar h2 { margin: 0 0 6px 0; font-size: 18px; }
+        .sidebar .small { font-size: 12px; color: #9aa4b2; }
+        .sidebar .btn-new {
+            background: #1f6feb;
+            border: none;
+            color: #fff;
+            width: 100%;
+            padding: 8px;
+            border-radius: 6px;
+        }
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #fff;
+        }
+        .topbar {
+            padding: 16px 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .topbar .title { font-weight: 600; font-size: 16px; }
+        .topbar .btn-toggle { margin-left: 10px; }
+        .chat-area {
+            flex: 1;
             overflow-y: auto;
+            padding: 24px;
+            background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
         }
 
-        #user-input {
-            margin-bottom: 10px;
+        /* Message bubbles */
+        .message {
+            display: flex;
+            margin-bottom: 12px;
+            max-width: 80%;
+        }
+        .message.user { justify-content: flex-end; margin-left: auto; }
+        .message.bot { justify-content: flex-start; margin-right: auto; }
+        .bubble {
+            padding: 10px 14px;
+            border-radius: 14px;
+            line-height: 1.4;
+            box-shadow: 0 1px 0 rgba(0,0,0,0.04);
+            font-size: 14px;
+            white-space: pre-wrap;
+        }
+        .bubble.user-bubble {
+            background: #1f6feb;
+            color: #fff;
+            border-bottom-right-radius: 6px;
+        }
+        .bubble.bot-bubble {
+            background: #f1f3f5;
+            color: #111827;
+            border-bottom-left-radius: 6px;
+        }
+        .loading-message { text-align: center; font-style: italic; color: #6b7280; }
+
+        /* Composer (input) */
+        .composer {
+            padding: 12px 16px;
+            border-top: 1px solid #eee;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .composer textarea {
+            resize: none;
+            flex: 1;
+            min-height: 44px;
+            max-height: 120px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid #e6e8eb;
+            font-size: 14px;
+        }
+        .composer .btn {
+            min-width: 46px;
+            height: 42px;
+            border-radius: 8px;
+        }
+
+        /* Responsive */
+        @media (max-width: 800px) {
+            .sidebar { display: none; }
+            .message { max-width: 92%; }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Krissi Help Chatbot</h1>
-        <p>Disclaimer:please have patience this might take some time</p>
-        <div class="row chat-container" id="chat-container"></div>
-        <div class="row">
-            <div class="col-xs-12">
-                <input type="text" class="form-control" id="user-input" placeholder="Type your message...">
+    <div class="app">
+        <div class="sidebar">
+            <h2>farmer's Help</h2>
+            <div class="small">Agriculture assistant for farmers</div>
+            <button id="new-chat-btn" class="btn-new">+ New chat</button>
+            <div style="margin-top:8px; display:flex; gap:6px; align-items:center;">
+                <input id="search-chat" type="text" placeholder="Search chats" style="flex:1; padding:6px 8px; border-radius:6px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.02); color:#fff;">
+                <!-- shown when creating a new chat title -->
+                <input id="new-chat-title" type="text" placeholder="Enter chat title" style="flex:1; padding:6px 8px; border-radius:6px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.02); color:#fff; display:none;">
             </div>
-        </div>
-        <div class="row">
-            <div class="col-xs-12">
-                <button class="btn btn-primary btn-block" id="send-btn">Send</button>
+
+            <hr style="border-color: rgba(255,255,255,0.06)">
+
+            <div style="flex:1; overflow:auto;">
+                <p class="small">Recent</p>
+                <ul id="chat-list" class="list-unstyled" style="padding-left:0; margin:0;">
+                    <!-- recent chats will be inserted here -->
+                </ul>
             </div>
-        </div>
-        
-        <div class="row">
-            <div class="col-xs-12">
-                <button class="btn btn-primary btn-block" id="record-btn">Record</button>
-            </div>
+
+            <div class="small" style="margin-top:10px; opacity:0.8">Model: default</div>
         </div>
 
-        <div class="row">
-            <div class="col-xs-12">
-                <audio id="audio" controls></audio>
+        <div class="main">
+            <div class="topbar">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <button id="toggle-sidebar-btn" class="btn btn-default btn-toggle" title="Toggle sidebar"><i class="bi bi-list"></i></button>
+                    <div class="title">farmer's Help Chatbot</div>
+                </div>
+                <div class="small">Disclaimer: responses may take a moment</div>
             </div>
+
+            <div id="chat-container" class="chat-area" aria-live="polite"></div>
+
+            <div class="composer">
+                <button id="record-btn" class="btn btn-default" title="Record (voice)"><i class="bi bi-mic"></i></button>
+                <textarea id="user-input" placeholder="Type your message..." aria-label="Message"></textarea>
+                <button id="send-btn" class="btn btn-primary">Send</button>
+             </div>
         </div>
-        <footer class="footer">
-            <div class="footer-links">
-                <h2> Made by Mohammed Ashraf
-                <a href="https://www.linkedin.com/in/mohammed97ashraf" target="_blank"><i class="bi bi-linkedin"></i></a>
-                <a href="https://github.com/mohammed97ashraf" target="_blank"><i class="bi bi-github"></i></a></h2>
-            </div>
-        </footer>
     </div>
+
+    <audio id="audio" style="display:none"></audio>
 
     <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
     <script>
         $(document).ready(function() {
-            $('#send-btn').on('click', function() {
-                sendMessage();
+            // Chat list state (client-side)
+            var chats = [];
+            var currentChatId = null;
+
+            function renderChatList(filter) {
+                var $list = $('#chat-list');
+                $list.empty();
+                var q = (filter || '').toLowerCase();
+                chats.forEach(function(c) {
+                    if (q && !(c.title || '').toLowerCase().includes(q)) return;
+                    var $li = $('<li>').css({padding: '6px 4px', cursor: 'pointer'}).attr('data-id', c.id).text(c.title || 'Untitled chat');
+                    if (c.id === currentChatId) $li.css({background: 'rgba(255,255,255,0.04)', 'border-radius': '6px'});
+                    $li.on('click', function() { switchChat(c.id); });
+                    $list.append($li);
+                });
+            }
+
+            // create a new chat. if title is empty, use default
+            function createNewChat(title) {
+                var t = (title || '').trim() || 'New chat';
+                var id = Date.now().toString();
+                var chat = { id: id, title: t, messages: [] };
+                chats.unshift(chat);
+                currentChatId = id;
+                renderChatList($('#search-chat').val());
+                $('#chat-container').empty();
+                $('#user-input').focus();
+            }
+
+            // toggle sidebar visibility
+            function toggleSidebar() {
+                $('.sidebar').toggleClass('hidden');
+            }
+
+            function switchChat(id) {
+                currentChatId = id;
+                renderChatList();
+                $('#chat-container').empty();
+                var chat = chats.find(function(c){ return c.id === id; });
+                if (chat && chat.messages) {
+                    chat.messages.forEach(function(m){
+                        var cls = m.role === 'user' ? 'user' : 'bot';
+                        var bubbleClass = m.role === 'user' ? 'user-bubble' : 'bot-bubble';
+                        $('#chat-container').append('<div class="message '+cls+'"><div class="bubble '+bubbleClass+'">'+escapeHtml(m.text)+'</div></div>');
+                    });
+                    scrollToBottom();
+                }
+            }
+
+            $('#send-btn').on('click', function() { sendMessage(); });
+            $('#user-input').on('keypress', function(e) { if (e.which === 13 && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
+            $('#record-btn').on('click', function() { toggleRecording(); });
+            // show title input when creating a new chat (no popup)
+            $('#new-chat-btn').on('click', function(){
+                $('#search-chat').hide();
+                $('#new-chat-title').show().val('').focus();
             });
 
-            $('#user-input').on('keypress', function(e) {
-                if (e.which === 13) {
-                    sendMessage();
+            // create chat when pressing Enter in title input, Esc cancels
+            $('#new-chat-title').on('keydown', function(e){
+                if (e.which === 13) { // Enter
+                    e.preventDefault();
+                    var title = $(this).val();
+                    createNewChat(title);
+                    $(this).hide();
+                    $('#search-chat').show().val('').focus();
+                } else if (e.which === 27) { // Escape
+                    $(this).hide();
+                    $('#search-chat').show().focus();
                 }
             });
 
-            $('#record-btn').on('click', function() {
-                toggleRecording();
-            });
+            // normal search behavior
+            $('#search-chat').on('input', function() { renderChatList($(this).val()); });
+            $('#toggle-sidebar-btn').on('click', toggleSidebar);
 
             var recording = false;
             var recorder;
@@ -85,132 +253,152 @@
             function toggleRecording() {
                 if (recording) {
                     stopRecording();
-                    $('#record-btn').text('Record');
+                    $('#record-btn').removeClass('btn-danger').addClass('btn-default');
                 } else {
                     startRecording();
-                    $('#record-btn').text('Stop Recording');
+                    $('#record-btn').removeClass('btn-default').addClass('btn-danger');
                 }
                 recording = !recording;
             }
 
-            
             function startRecording() {
                 if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
                     navigator.mediaDevices.getUserMedia({ audio: true })
                         .then(function(stream) {
                             recorder = new MediaRecorder(stream);
                             var chunks = [];
-            
-                            recorder.addEventListener('dataavailable', function(e) {
-                                chunks.push(e.data);
-                            });
-            
+                            recorder.addEventListener('dataavailable', function(e) { chunks.push(e.data); });
                             recorder.addEventListener('stop', function() {
                                 var audioBlob = new Blob(chunks, { type: 'audio/webm' });
                                 var formData = new FormData();
                                 formData.append('audio', audioBlob, 'audio.webm');
                                 sendAudio(formData);
                             });
-            
                             recorder.start();
                         })
-                        .catch(function(err) {
-                            console.error('Error accessing microphone:', err);
-                        });
+                        .catch(function(err) { console.error('Error accessing microphone:', err); });
                 } else {
                     console.error('getUserMedia is not supported in this browser.');
                 }
             }
 
-
-            function stopRecording() {
-                if (recorder) {
-                    recorder.stop();
-                }
-            }
+            function stopRecording() { if (recorder) recorder.stop(); }
 
             function sendAudio(formData) {
-                $('#chat-container').append('<div class="col-xs-12"><p class="loading-message">Uploading audio...</p></div>');
+                $('#chat-container').append('<div class="message bot"><div class="bubble bot-bubble loading-message">Uploading audio...</div></div>');
                 scrollToBottom();
 
                 $.ajax({
-                    url: '/chat',
+                    url: window.location.origin + '/chat',
                     type: 'POST',
                     data: formData,
                     contentType: false,
                     processData: false,
+                    timeout: 30000,
                     success: function(response) {
+                        console.log('sendAudio success', response);
                         $('#chat-container .loading-message:last').remove();
-
-                        var transcription = response.text;
+                        var transcription = response && response.text ? response.text : '';
                         $('#user-input').val(transcription);
-                        sendMessage();
+                        if (transcription.trim() !== '') {
+                            sendMessage();
+                        }
                     },
                     error: function(xhr, status, error) {
-                        console.error('Error uploading audio:', error);
+                        console.error('Error uploading audio:', status, error, xhr.responseText);
+                        $('#chat-container .loading-message:last').remove();
+                        var msg = 'Error uploading audio: ' + (xhr.status ? xhr.status + ' ' : '') + (xhr.statusText || status);
+                        if (xhr.responseText) msg += ' - ' + xhr.responseText;
+                        $('#chat-container').append('<div class="message bot"><div class="bubble bot-bubble">' + escapeHtml(msg) + '</div></div>');
+                        scrollToBottom();
                     }
                 });
             }
 
             function sendMessage() {
                 var userInput = $('#user-input').val();
-                if (userInput.trim() !== '') {
-                    $('#user-input').val('');
-                    $('#chat-container').append('<div class="col-xs-12 text-right"><p class="alert alert-info">' + userInput + '</p></div>');
+                if (userInput.trim() === '') return;
+                $('#user-input').val('');
+                $('#chat-container').append('<div class="message user"><div class="bubble user-bubble">' + escapeHtml(userInput) + '</div></div>');
+                scrollToBottom();
+
+                $('#chat-container').append('<div class="message bot"><div class="bubble bot-bubble loading-message">Bot is typing...</div></div>');
+                scrollToBottom();
+
+                // Use explicit ajax so we can show response details on failure
+                $.ajax({
+                    url: window.location.origin + '/chat',
+                    method: 'POST',
+                    data: { text: userInput },
+                    timeout: 30000,
+                    dataType: 'json'
+                }).done(function(response) {
+                    console.log('chat response', response);
+                    $('#chat-container .loading-message:last').remove();
+                    var text = response && response.text ? response.text : 'No response';
+                    $('#chat-container').append('<div class="message bot"><div class="bubble bot-bubble">' + escapeHtml(text) + '</div></div>');
                     scrollToBottom();
-
-                    $('#chat-container').append('<div class="col-xs-12"><p class="loading-message">Bot is typing...</p></div>');
+                    setVoice(response && response.voice);
+                    playNotificationSound();
+                    showNotification(text);
+                    // store messages in current chat if any
+                    if (currentChatId) {
+                        var chat = chats.find(function(c){ return c.id === currentChatId; });
+                        if (chat) {
+                            chat.messages.push({ role:'user', text: userInput });
+                            chat.messages.push({ role:'bot', text: text });
+                            renderChatList($('#search-chat').val());
+                        }
+                    }
+                }).fail(function(xhr, status, error) {
+                    console.error('chat request failed', status, error, xhr.responseText);
+                    $('#chat-container .loading-message:last').remove();
+                    var msg = 'Error: could not reach server.';
+                    if (xhr.status) msg = 'Error ' + xhr.status + ': ' + (xhr.responseText || xhr.statusText || status);
+                    $('#chat-container').append('<div class="message bot"><div class="bubble bot-bubble">' + escapeHtml(msg) + '</div></div>');
                     scrollToBottom();
-
-                    $.post('/chat', {text: userInput}, function(response) {
-                        $('#chat-container .loading-message:last').remove();
-
-                        $('#chat-container').append('<div class="col-xs-12 text-left"><p class="alert alert-success">' + response.text + '</p></div>');
-                        scrollToBottom();
-
-                        setVoice(response.voice);
-                        playNotificationSound();
-                        showNotification(response.text);
-                    });
-                }
+                });
             }
 
             function setVoice(voiceFile) {
-                var audio = document.getElementById('audio');
-                audio.pause();
-                audio.src = voiceFile;
-                audio.load();
-                audio.play();
+                var audioEl = document.getElementById('audio');
+                if (!voiceFile) return;
+                audioEl.pause();
+                audioEl.src = voiceFile;
+                audioEl.load();
+                audioEl.play().catch(function(){});
             }
 
             function playNotificationSound() {
-                var audio = new Audio('{{ url_for('static', filename='audio/sound.mp3') }}');
-                audio.play();
+                try {
+                    var audio = new Audio('{{ url_for('static', filename='audio/sound.mp3') }}');
+                    audio.play();
+                } catch(e) {}
             }
 
             function showNotification(message) {
+                if (!("Notification" in window)) return;
                 if (Notification.permission === "granted") {
-                    var notification = new Notification("New Message", {
-                        body: message,
-                        icon: "{{ url_for('static', filename='img/notification-icon.png') }}"
-                    });
+                    new Notification("farmer's", { body: message });
                 } else if (Notification.permission !== "denied") {
-                    Notification.requestPermission().then(function(permission) {
-                        if (permission === "granted") {
-                            var notification = new Notification("New Message", {
-                                body: message,
-                                icon: "{{ url_for('static', filename='img/notification-icon.png') }}"
-                            });
-                        }
-                    });
+                    Notification.requestPermission();
                 }
             }
 
             function scrollToBottom() {
-                $('#chat-container').scrollTop($('#chat-container')[0].scrollHeight);
+                var el = $('#chat-container')[0];
+                if (el) el.scrollTop = el.scrollHeight;
+            }
+
+            function escapeHtml(text) {
+                return text
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#039;");
             }
         });
     </script>
-    
 </body>
 </html>
